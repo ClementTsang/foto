@@ -5,11 +5,12 @@ Mainly built using Rust, Sled, and Rocket, with many other libraries to aid in i
 
 ## Features
 
-- All you need is Rust installed.
 - Supports searching for images via perceptual hashes to find similar images.
 - Supports a basic implementation of user registration and logins.
 
 ## Installation
+
+TL;DR: Install Rust, set up AWS, clone the project, and run!
 
 1. Install Rust. You can do so with [rustup](https://www.rust-lang.org/tools/install), or your system's package manager if possible. You can check if everything worked by doing
 

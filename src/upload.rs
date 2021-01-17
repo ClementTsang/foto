@@ -70,7 +70,7 @@ impl<'a, 'r> FromRequest<'a, 'r> for Boundary {
     }
 }
 
-#[post("/api/0/upload", format = "multipart/form-data", data = "<data>")]
+#[post("/0/upload", format = "multipart/form-data", data = "<data>")]
 pub async fn upload(
     db: State<'_, Database>,
     data: Data,

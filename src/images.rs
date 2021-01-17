@@ -47,7 +47,7 @@ impl FromStr for ImageUploadType {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Image {
     id: u64,
@@ -140,8 +140,20 @@ pub async fn build_image_for_foto(image_form: ImageForm, username: &str) -> Resu
 }
 
 pub fn add_image_to_db(image: Image, db: &Database) -> Result<()> {
-    assert!(image.hash.len() == 8);
-    db.images.insert(image.hash.to_vec(), image)?;
+    let hash = image.hash.to_vec();
+
+    let value = match db.images.get(hash.clone())? {
+        Some(mut images) => {
+            images.push(image);
+
+            images
+        }
+        None => {
+            vec![image]
+        }
+    };
+
+    db.images.insert(hash, value)?;
 
     Ok(())
 }

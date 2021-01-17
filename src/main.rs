@@ -25,7 +25,7 @@ use response::*;
 use sled_extensions::{bincode::Tree, DbExt};
 use user::*;
 
-#[post("/api/0/register", format = "json", data = "<credentials>")]
+#[post("/0/register", format = "json", data = "<credentials>")]
 fn register(db: State<Database>, credentials: Json<Credentials>) -> ApiResponse {
     match add_user(credentials.0, &USER_DATABASE_CONFIG, &db) {
         Ok(_) => ApiResponse {
@@ -43,7 +43,7 @@ fn register(db: State<Database>, credentials: Json<Credentials>) -> ApiResponse 
     }
 }
 
-#[post("/api/0/login", format = "json", data = "<credentials>")]
+#[post("/0/login", format = "json", data = "<credentials>")]
 fn login(db: State<Database>, credentials: Json<Credentials>) -> ApiResponse {
     match verify_user(credentials.0, &USER_DATABASE_CONFIG, &db) {
         Ok(token) => ApiResponse {
@@ -71,7 +71,23 @@ fn rocket() -> rocket::Rocket {
 
     rocket::ignite()
         .mount(
-            "/",
+            "/api/",
+            routes![search::search, upload::upload, register, login],
+        )
+        .manage(Database {
+            users: db.open_bincode_tree("users").unwrap(),
+            images: db.open_bincode_tree("images").unwrap(),
+        })
+}
+
+/// Builds a rocket given a sled_embedded database reference.  This is mostly just for testing (at least for now) so
+/// the different clients can all just share one database connection; for most cases you would want
+/// to just use the [`rocket`] function which will manually initialize the database.
+#[allow(dead_code)]
+fn rocket_from_db(db: &sled_extensions::Db) -> rocket::Rocket {
+    rocket::ignite()
+        .mount(
+            "/api/",
             routes![search::search, upload::upload, register, login],
         )
         .manage(Database {
@@ -82,5 +98,5 @@ fn rocket() -> rocket::Rocket {
 
 pub struct Database {
     users: Tree<User>,
-    images: Tree<Image>,
+    images: Tree<Vec<Image>>,
 }

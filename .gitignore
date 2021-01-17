@@ -13,5 +13,3 @@ target/
 sled_data/
 
 requests.http
-
-test*.*

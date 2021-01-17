@@ -42,7 +42,7 @@ impl<'r> Responder<'r, 'static> for SearchError {
     }
 }
 
-#[post("/api/0/search", format = "multipart/form-data", data = "<data>")]
+#[post("/0/search", format = "multipart/form-data", data = "<data>")]
 pub async fn search(
     db: State<'_, Database>,
     data: Data,
@@ -116,6 +116,8 @@ pub async fn search(
                             .map(|(&hash_1, &hash_2)| (hash_1 ^ hash_2) as u64)
                             .sum::<u64>();
 
+                        println!("Hamming distance: {:?}", hamming_distance);
+
                         if hamming_distance <= *HAMMING_DISTANCE {
                             Some(key)
                         } else {
@@ -128,7 +130,7 @@ pub async fn search(
             .collect::<Vec<_>>();
 
         for key in correct_keys {
-            results.push(db.images.get(key).unwrap().unwrap());
+            results.extend(db.images.get(key).unwrap().unwrap());
         }
     }
 
