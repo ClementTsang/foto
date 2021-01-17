@@ -10,7 +10,7 @@ target/
 
 *.json
 
-*.sqlite
+sled_data/
 
 requests.http
 

@@ -1,8 +1,11 @@
 use multer::{parse_boundary, Constraints, Multipart, SizeLimit};
-use rocket::response::{Responder, Response};
 use rocket::{
     data::ByteUnit,
     request::{FromRequest, Outcome, Request},
+};
+use rocket::{
+    response::{Responder, Response},
+    State,
 };
 
 use rocket::{
@@ -13,7 +16,7 @@ use rocket::{http::ContentType, Data};
 use thiserror::Error;
 
 use crate::images::*;
-use crate::{auth::UserId, FotoDB};
+use crate::{auth::UserId, Database};
 
 #[derive(Error, Debug)]
 pub enum UploadError {
@@ -69,10 +72,10 @@ impl<'a, 'r> FromRequest<'a, 'r> for Boundary {
 
 #[post("/api/0/upload", format = "multipart/form-data", data = "<data>")]
 pub async fn upload(
+    db: State<'_, Database>,
     data: Data,
     boundary: Boundary,
     user_id: UserId,
-    conn: FotoDB,
 ) -> Result<(), UploadError> {
     use futures::stream::once;
 
@@ -132,13 +135,11 @@ pub async fn upload(
             mime: content_type.unwrap_or_default(),
         };
 
-        let image = build_image_for_foto(image_form, user_id.uid)
+        let image = build_image_for_foto(image_form, &user_id.username)
             .await
             .map_err(|err| UploadError::FailedToAdd(err.to_string()))?;
 
-        conn.run(move |connection| add_image_to_db(image, connection))
-            .await
-            .map_err(|err| UploadError::FailedToAdd(err.to_string()))?;
+        add_image_to_db(image, &db).map_err(|err| UploadError::FailedToAdd(err.to_string()))?;
     } else {
         return Err(UploadError::MissingFields);
     }

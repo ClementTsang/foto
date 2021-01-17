@@ -1,12 +1,13 @@
-use std::{str::FromStr, time::Duration};
+use std::{convert::TryInto, str::FromStr, time::Duration};
 
 use anyhow::Result;
 use image::DynamicImage;
 use img_hash::{image, HasherConfig};
 use reqwest::ClientBuilder;
-use rocket_contrib::databases::rusqlite;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
+
+use crate::Database;
 
 pub struct ImageForm {
     pub image: Vec<u8>,
@@ -46,39 +47,37 @@ impl FromStr for ImageUploadType {
     }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct SendableImage {
-    pub id: i64,
-    pub image_url: String,
-    pub user_id: i64,
-    pub title: String,
-    pub description: String,
-    // pub image_type: String,
-    // pub width: u32,
-    // pub height: u32,
-    // pub datetime: i64,
-}
-
-#[derive(Debug)]
 pub struct Image {
+    id: u64,
     image_url: String,
-    hash: Vec<u8>,
-    user_id: i64,
+    #[serde(skip)]
+    hash: [u8; 8],
+    username: String,
     title: String,
-    // tags: Vec<String>,
+    tags: Vec<String>,
     description: String,
-    metadata: ImageMetadata,
-}
 
-#[derive(Debug)]
-pub struct ImageMetadata {
+    // Ideally you flatten this, but this is broken as per https://github.com/servo/bincode/issues/245
+    // Instead, we'll just manually inline the data ourselves.
+    // #[serde(flatten)]
+    // metadata: ImageMetadata,
     image_type: String,
     width: u32,
     height: u32,
     /// Unix timestamp
     datetime: i64,
 }
+
+// #[derive(Debug, Serialize, Deserialize)]
+// pub struct ImageMetadata {
+//     image_type: String,
+//     width: u32,
+//     height: u32,
+//     /// Unix timestamp
+//     datetime: i64,
+// }
 
 pub async fn get_image_from_type_and_bytes(
     image_type: &ImageUploadType,
@@ -108,7 +107,7 @@ pub async fn get_image_from_type_and_bytes(
     }
 }
 
-pub async fn build_image_for_foto(image_form: ImageForm, user_id: i64) -> Result<Image> {
+pub async fn build_image_for_foto(image_form: ImageForm, username: &str) -> Result<Image> {
     let image = get_image_from_type_and_bytes(&image_form.image_type, &image_form.image).await;
 
     match image {
@@ -121,55 +120,29 @@ pub async fn build_image_for_foto(image_form: ImageForm, user_id: i64) -> Result
             let rgba16_img = image.into_rgba16();
 
             Ok(Image {
+                id: 0, // FIXME
                 image_url,
-                hash,
-                user_id,
+                hash: hash
+                    .try_into()
+                    .map_err(|_| anyhow::format_err!("Could not get 8 bytes from hash..."))?,
+                username: username.to_string(),
+                tags: vec![], // FIXME
                 title: image_form.title,
                 description: image_form.description,
-                metadata: ImageMetadata {
-                    image_type: image_form.mime,
-                    width: rgba16_img.width(),
-                    height: rgba16_img.height(),
-                    datetime: chrono::Utc::now().timestamp(),
-                },
+                image_type: image_form.mime,
+                width: rgba16_img.width(),
+                height: rgba16_img.height(),
+                datetime: chrono::Utc::now().timestamp(),
             })
         }
         Err(err) => Err(err)?,
     }
 }
 
-pub fn add_image_to_db(image: Image, connection: &rusqlite::Connection) -> Result<()> {
+pub fn add_image_to_db(image: Image, db: &Database) -> Result<()> {
     assert!(image.hash.len() == 8);
-    connection.execute(
-        "INSERT INTO images (image_url, hash1, hash2, hash3, hash4, hash5, hash6, hash7, hash8, user_id, title, description) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)",
-        rusqlite::params![
-            image.image_url,
-            image.hash[0],
-            image.hash[1],
-            image.hash[2],
-            image.hash[3],
-            image.hash[4],
-            image.hash[5],
-            image.hash[6],
-            image.hash[7],
-            image.user_id,
-            image.title,
-            image.description
-        ],
-    )?;
+    db.images.insert(image.hash.to_vec(), image)?;
 
-    let image_id = connection.last_insert_rowid();
-
-    connection.execute(
-        "INSERT INTO image_metadata (image_id, type, width, height, datetime) VALUES (?1, ?2, ?3, ?4, ?5)",
-        rusqlite::params![
-            image_id,
-            image.metadata.image_type,
-            image.metadata.width,
-            image.metadata.height,
-            image.metadata.datetime
-        ],
-    )?;
     Ok(())
 }
 

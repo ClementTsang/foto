@@ -21,25 +21,23 @@ pub enum AuthError {
     NoAuthHeader,
     #[error("Invalid auth header format")]
     InvalidAuthHeader,
-    #[error("Invalid uid")]
-    InvalidUid,
 }
 
 pub struct UserId {
-    pub uid: i64,
+    pub username: String,
 }
 
 const BEARER: &str = "Bearer ";
 
 /// Creates a JWT given a UID.
-pub fn create_jwt(uid: &str) -> anyhow::Result<String> {
+pub fn create_jwt(username: &str) -> anyhow::Result<String> {
     let expiration_time = Utc::now()
         .checked_add_signed(chrono::Duration::minutes(60))
         .ok_or(anyhow::format_err!("Could not add time to JWT timestamp."))?
         .timestamp();
 
     let claims = Claims {
-        sub: uid.to_owned(),
+        sub: username.to_owned(),
         exp: expiration_time as u64,
     };
 
@@ -60,13 +58,13 @@ impl<'a, 'r> FromRequest<'a, 'r> for UserId {
         let uid_result = authorize(req.headers());
 
         match uid_result {
-            Ok(uid) => Outcome::Success(UserId { uid }),
+            Ok(username) => Outcome::Success(UserId { username }),
             Err(err) => Outcome::Failure((Status::BadRequest, err)),
         }
     }
 }
 
-fn authorize(headers: &rocket::http::HeaderMap) -> Result<i64, AuthError> {
+fn authorize(headers: &rocket::http::HeaderMap) -> Result<String, AuthError> {
     let jwt = get_jwt(headers)?;
 
     let decoded_jwt = decode::<Claims>(
@@ -76,11 +74,7 @@ fn authorize(headers: &rocket::http::HeaderMap) -> Result<i64, AuthError> {
     )
     .map_err(|_| AuthError::InvalidAuthHeader)?;
 
-    Ok(decoded_jwt
-        .claims
-        .sub
-        .parse::<i64>()
-        .map_err(|_| AuthError::InvalidUid)?)
+    Ok(decoded_jwt.claims.sub)
 }
 
 fn get_jwt(headers: &rocket::http::HeaderMap) -> Result<String, AuthError> {
