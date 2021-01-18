@@ -5,14 +5,15 @@ Mainly built using Rust, Sled, and Rocket, with many other libraries to aid in i
 
 ## Features
 
+- Supports user registration and authentication (latter uses a _very_ basic JWT setup).
+- Supports uploading images and storing into an S3 Bucket.
 - Supports searching for images via perceptual hashes to find similar images.
-- Supports a basic implementation of user registration and logins.
 
 ## Installation
 
 TL;DR: Install Rust, set up S3, clone the project, and run!
 
-1. Install Rust. You can do so with [rustup](https://www.rust-lang.org/tools/install), or your system's package manager if possible. You can check if everything worked by doing
+1. Install Rust. You can do so with [rustup](https://www.rust-lang.org/tools/install). You can check if everything worked by doing
 
    ```bash
    rustc --version
@@ -52,7 +53,7 @@ TL;DR: Install Rust, set up S3, clone the project, and run!
    cargo run --release
    ```
 
-   This may take a while and take some resources, there are quite a few dependencies to download and build. When it's done building, you should get some output that looks like:
+   This may take a while, there are quite a few dependencies to download and build. When it's done building, you should get some output that looks like:
 
    ```bash
    Compiling foto v0.1.0 (/home/.../foto)
@@ -64,4 +65,163 @@ TL;DR: Install Rust, set up S3, clone the project, and run!
 
 ## Usage
 
-This backend currently supports the following endpoints:
+This backend currently supports the following endpoints (replace `http://127.0.0.1:8000` appropriately):
+
+### `/api/0/register`
+
+Adds a user to the database. Their username and hashed + salted passwords are stored.
+
+```http
+POST http://127.0.0.1:8000/api/0/register
+content-type: application/json
+
+{
+    "username": "username",
+    "password": "password"
+}
+```
+
+- Registers a new user.
+
+- Will return a 400 error if one tries to create an account with a duplicate username.
+
+### `/api/0/login`
+
+```http
+POST http://127.0.0.1:8000/api/0/login
+content-type: application/json
+
+{
+    "username": "username",
+    "password": "password"
+}
+```
+
+- Authenticates a user, and returns a JWT token lasting 30 minutes if successful:
+
+  ```json
+  {
+    "message": "Successfully logged in",
+    "token": "TOKEN"
+  }
+  ```
+
+- An invalid login will return a 400 error.
+
+### `/api/0/upload`
+
+Uploads an image, adds it to the database, and uploads it to S3 if a bucket is provided. Requires a valid JWT token. Replace `TOKEN` with the JWT token.
+
+```http
+POST http://127.0.0.1:8000/api/0/upload
+Content-Type: multipart/form-data; boundary=----Boundary
+Authorization: Bearer TOKEN
+
+------Boundary
+Content-Disposition: form-data; name="image"; filename="test1.jpg"
+Content-Type: image/jpeg
+
+< ./images/test1.jpg
+------Boundary
+Content-Disposition: form-data; name="type"
+
+File
+------Boundary
+Content-Disposition: form-data; name="title"
+
+Goose 1 (Normal)
+------Boundary
+Content-Disposition: form-data; name="description"
+
+A totally normal picture of a goose.
+------Boundary--
+```
+
+- The `type` field supports three values (case insensitive):
+
+  - `url`
+  - `file`
+  - `base64`
+
+  Choose the appropriate value for the file type.
+
+- Lacking a correct JWT token will throw a 401 error:
+
+  ```json
+  {
+    "message": "please include a valid JWT token"
+  }
+  ```
+
+- An invalid multipart form will throw a 400 error:
+
+  ```json
+  {
+    "message": "please include a valid multipart form"
+  }
+  ```
+
+- A form missing either the `image` or `type` fields will throw a 500 error.
+
+- If the image fails to be uploaded for any other reason, it will also throw a 500 error.
+
+### `/api/0/search`
+
+Uploads an image similarly to the `/api/0/upload` endpoint, but returns a JSON with image results that are deemed similar to the uploaded image.
+
+Similarity is calculated using an image procedural hash and comparing hashes via Hamming distance.
+
+```http
+POST http://127.0.0.1:8000/api/0/search
+Content-Type: multipart/form-data; boundary=----Boundary
+
+------Boundary
+Content-Disposition: form-data; name="similar_image"; filename="test1.jpg"
+Content-Type: image/jpeg
+
+< ./images/test1.jpg
+------Boundary
+Content-Disposition: form-data; name="similar_image_type"
+
+File
+------Boundary--
+```
+
+- Example of output:
+
+  ```json
+  {
+    "results": [
+      {
+        "datetime": 1610934842,
+        "description": "A totally normal picture of a goose.",
+        "height": 768,
+        "id": "glooeluob4j",
+        "imageType": "image/jpeg",
+        "imageUrl": "https:/bucket.s3.amazonaws.com/glooeluob4j.jpg",
+        "tags": [],
+        "title": "Goose 1 (Normal)",
+        "username": "username",
+        "width": 576
+      },
+      {
+        "datetime": 1610935216,
+        "description": "A totally modified picture of a goose.",
+        "height": 768,
+        "id": "4Uh2jVenjbY",
+        "imageType": "image/jpeg",
+        "imageUrl": "https:/bucket.s3.amazonaws.com/4Uh2jVenjbY.jpg",
+        "tags": [],
+        "title": "Goose 1 (Modified)",
+        "username": "username",
+        "width": 576
+      }
+    ]
+  }
+  ```
+
+- Similar to the `/api/0/upload` endpoint, it will fail if the multipart form is incorrect, or missing fields.
+
+## Thanks
+
+Thanks to _all_ the library authors whose work I was able to use.

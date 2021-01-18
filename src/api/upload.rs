@@ -25,7 +25,7 @@ pub enum UploadError {
     #[error("Failed to read multipart form properly")]
     MultipartError(#[from] multer::Error),
     #[error("Missing fields")]
-    MissingFields(String),
+    MissingFields,
     #[error("Failed to add image")]
     FailedToAdd(String),
 }
@@ -127,9 +127,6 @@ pub async fn upload(
         }
     }
 
-    let image_is_some = image.is_some();
-    let image_type_is_some = image_type.is_some();
-
     if let (Some(image), Some(image_type)) = (image, image_type) {
         let image_form = ImageForm {
             image,
@@ -146,13 +143,7 @@ pub async fn upload(
 
         add_image_to_db(image, &db).map_err(|err| UploadError::FailedToAdd(err.to_string()))?;
     } else {
-        if image_is_some {
-            return Err(UploadError::MissingFields("image_type".to_string()));
-        } else if image_type_is_some {
-            return Err(UploadError::MissingFields("image".to_string()));
-        } else {
-            return Err(UploadError::MissingFields("image, image_type".to_string()));
-        }
+        return Err(UploadError::MissingFields);
     }
 
     Ok(())
