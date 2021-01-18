@@ -31,9 +31,9 @@ pub enum VerifyError {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct User {
-    username: String,
+    pub username: String,
     /// In base64.
-    password: String,
+    pub password: String,
 }
 
 /// Creates a new user and stores it given a set of [`Credentials`].

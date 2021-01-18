@@ -142,18 +142,32 @@ pub async fn build_image_for_foto(image_form: ImageForm, username: &str) -> Resu
 pub fn add_image_to_db(image: Image, db: &Database) -> Result<()> {
     let hash = image.hash.to_vec();
 
-    let value = match db.images.get(hash.clone())? {
-        Some(mut images) => {
-            images.push(image);
+    db.images
+        .insert(image.id.to_ne_bytes().to_vec(), image.clone())?;
 
-            images
-        }
-        None => {
-            vec![image]
-        }
-    };
+    db.image_hashes
+        .transaction(move |tx_db| {
+            let get = tx_db.get(hash.clone())?;
+            let value = match get {
+                Ok(get) => match get {
+                    Some(mut images) => {
+                        images.push(image.clone());
+                        images
+                    }
+                    None => {
+                        vec![image.clone()]
+                    }
+                },
+                Err(_) => {
+                    vec![image.clone()]
+                }
+            };
 
-    db.images.insert(hash, value)?;
+            tx_db.insert(hash.clone(), value)?.unwrap(); // Yes, unwrap is bad, but I have no idea how to process this second error...?
+
+            Ok(Ok(()))
+        })
+        .map_err(|err| anyhow::format_err!("Transaction error: {:?}", err))??;
 
     Ok(())
 }

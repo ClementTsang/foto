@@ -10,7 +10,9 @@ use rocket::{http::ContentType, Data};
 use rocket_contrib::json::JsonValue;
 use thiserror::Error;
 
-use crate::{consts::HAMMING_DISTANCE, images::*, upload::Boundary, Database};
+use crate::{consts::HAMMING_DISTANCE, images::*, Database};
+
+use super::upload::Boundary;
 
 #[derive(Error, Debug)]
 pub enum SearchError {
@@ -102,7 +104,7 @@ pub async fn search(
 
         let hash = get_image_hash(&image);
         let correct_keys = db
-            .images
+            .image_hashes
             .iter()
             .keys()
             .filter_map(|key| {
@@ -130,7 +132,7 @@ pub async fn search(
             .collect::<Vec<_>>();
 
         for key in correct_keys {
-            results.extend(db.images.get(key).unwrap().unwrap());
+            results.extend(db.image_hashes.get(key).unwrap().unwrap());
         }
     }
 

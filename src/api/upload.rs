@@ -13,10 +13,11 @@ use rocket::{
     http::{hyper::header::CONTENT_TYPE, Status},
 };
 use rocket::{http::ContentType, Data};
+use rocket_contrib::json::JsonValue;
 use thiserror::Error;
 
 use crate::images::*;
-use crate::{auth::UserId, Database};
+use crate::{auth::Username, Database};
 
 #[derive(Error, Debug)]
 pub enum UploadError {
@@ -62,10 +63,10 @@ impl<'a, 'r> FromRequest<'a, 'r> for Boundary {
 
             match boundary {
                 Ok(val) => Outcome::Success(Boundary { val }),
-                Err(_) => Outcome::Failure((Status::BadRequest, ())),
+                Err(_) => Outcome::Forward(()),
             }
         } else {
-            Outcome::Failure((Status::BadRequest, ()))
+            Outcome::Forward(())
         }
     }
 }
@@ -75,7 +76,7 @@ pub async fn upload(
     db: State<'_, Database>,
     data: Data,
     boundary: Boundary,
-    user_id: UserId,
+    user_id: Username,
 ) -> Result<(), UploadError> {
     use futures::stream::once;
 
@@ -145,4 +146,21 @@ pub async fn upload(
     }
 
     Ok(())
+}
+
+#[post("/0/upload", rank = 2, format = "multipart/form-data", data = "<data>")]
+pub fn upload_no_auth(data: Data, boundary: Boundary) -> JsonValue {
+    let _data = data;
+    let _boundary = boundary;
+
+    json!({
+        "message": "please include a valid JWT token"
+    })
+}
+
+#[post("/0/upload", rank = 3)]
+pub fn upload_invalid_form() -> JsonValue {
+    json!({
+        "message": "please include a valid multipart form"
+    })
 }
