@@ -11,7 +11,7 @@ Mainly built using Rust, Sled, and Rocket, with many other libraries to aid in i
 
 ## Installation
 
-TL;DR: Install Rust, set up S3, clone the project, and run!
+TL;DR: Install Rust, optionally set up S3, set up your `config.json` file, clone the project, and run!
 
 1. Install Rust. You can do so with [rustup](https://www.rust-lang.org/tools/install). You can check if everything worked by doing
 
@@ -65,7 +65,7 @@ TL;DR: Install Rust, set up S3, clone the project, and run!
 
 ## Usage
 
-This backend currently supports the following endpoints (replace `http://127.0.0.1:8000` appropriately):
+This backend currently supports the following endpoints (replace `http://127.0.0.1:8000` appropriately if needed):
 
 ### `/api/0/register`
 
