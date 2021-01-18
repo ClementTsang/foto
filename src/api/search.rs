@@ -10,7 +10,7 @@ use rocket::{http::ContentType, Data};
 use rocket_contrib::json::JsonValue;
 use thiserror::Error;
 
-use crate::{consts::HAMMING_DISTANCE, images::*, Database};
+use crate::{consts::HAMMING_DISTANCE, images::*, response::ApiResponse, Database};
 
 use super::upload::Boundary;
 
@@ -98,7 +98,7 @@ pub async fn search(
 
     if let (Some(image), Some(image_type)) = (image, image_type) {
         // Search for similar images...
-        let image = get_image_from_type_and_bytes(&image_type, &image)
+        let (image, _type, _bytes) = get_image_from_type_and_bytes(&image_type, &image)
             .await
             .map_err(|err| SearchError::FailedToSearch(err.to_string()))?;
 
@@ -137,4 +137,14 @@ pub async fn search(
     }
 
     Ok(json!({ "results": results }))
+}
+
+#[post("/0/search", rank = 3)]
+pub fn search_invalid_form() -> ApiResponse {
+    ApiResponse {
+        json: json!({
+            "message": "please include a valid multipart form"
+        }),
+        status: Status::BadRequest,
+    }
 }

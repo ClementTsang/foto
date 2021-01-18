@@ -8,6 +8,7 @@ use rocket::{
 use once_cell::sync::Lazy;
 use rand::distributions::Alphanumeric;
 use rand::{thread_rng, Rng};
+use serde::{Deserialize, Serialize};
 
 static DATABASE: Lazy<sled_extensions::Db> = Lazy::new(|| {
     sled_extensions::Config::default()
@@ -15,6 +16,54 @@ static DATABASE: Lazy<sled_extensions::Db> = Lazy::new(|| {
         .open()
         .expect("Failed to open sled db")
 });
+
+#[allow(dead_code)]
+const TEST_USERNAME: &str = "clement_testing_testing";
+
+#[allow(dead_code)]
+const TEST_PASSWORD: &str = "bad_password123";
+
+#[allow(dead_code)]
+fn create_or_do_nothing(client: &Client, username: &str, password: &str) {
+    let response = client
+        .post("/api/0/register")
+        .header(ContentType::JSON)
+        .body(format!(
+            r#"{{ 
+            "username": "{}",
+            "password": "{}"
+        }}"#,
+            username, password
+        ))
+        .dispatch();
+
+    println!("Account creation response: {}", response.status());
+}
+
+#[derive(Serialize, Deserialize)]
+struct LoginResponse {
+    pub message: String,
+    pub token: Option<String>,
+}
+
+#[allow(dead_code)]
+fn login_get_json(client: &Client, username: &str, password: &str) -> LoginResponse {
+    let response = client
+        .post("/api/0/login")
+        .header(ContentType::JSON)
+        .body(format!(
+            r#"{{ 
+                "username": "{}",
+                "password": "{}"
+            }}"#,
+            username, password
+        ))
+        .dispatch();
+
+    println!("Login status: {}", response.status());
+
+    serde_json::from_str(&response.into_string().unwrap()).unwrap()
+}
 
 #[test]
 fn test_account_creation() {
@@ -118,15 +167,3 @@ fn login() {
 
     assert_eq!(response.status(), Status::Ok);
 }
-
-#[test]
-fn test_wrong_token() {}
-
-#[test]
-fn insert_one_image() {}
-
-#[test]
-fn insert_many_images() {}
-
-#[test]
-fn search_similar_image() {}

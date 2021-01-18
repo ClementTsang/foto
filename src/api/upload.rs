@@ -13,11 +13,10 @@ use rocket::{
     http::{hyper::header::CONTENT_TYPE, Status},
 };
 use rocket::{http::ContentType, Data};
-use rocket_contrib::json::JsonValue;
 use thiserror::Error;
 
-use crate::images::*;
 use crate::{auth::Username, Database};
+use crate::{images::*, response::ApiResponse};
 
 #[derive(Error, Debug)]
 pub enum UploadError {
@@ -26,7 +25,7 @@ pub enum UploadError {
     #[error("Failed to read multipart form properly")]
     MultipartError(#[from] multer::Error),
     #[error("Missing fields")]
-    MissingFields,
+    MissingFields(String),
     #[error("Failed to add image")]
     FailedToAdd(String),
 }
@@ -77,6 +76,7 @@ pub async fn upload(
     data: Data,
     boundary: Boundary,
     user_id: Username,
+    s3_client: State<'_, rusoto_s3::S3Client>,
 ) -> Result<(), UploadError> {
     use futures::stream::once;
 
@@ -103,13 +103,13 @@ pub async fn upload(
     let mut title: Option<String> = None;
     let mut description: Option<String> = None;
     let mut content_type: Option<String> = None;
-    // let mut file_name: Option<String> = None;
+    // let mut image_name: Option<String> = None;
 
     while let Ok(Some(field)) = multipart.next_field().await {
         if let Some(field_name) = field.name() {
             match field_name {
                 "image" => {
-                    // file_name = field.file_name().and_then(|s| Some(s.to_string()));
+                    // image_name = field.file_name().and_then(|s| Some(s.to_string()));
                     content_type = field.content_type().and_then(|mime| Some(mime.to_string()));
                     image = Some(field.bytes().await?.to_vec());
                 }
@@ -127,6 +127,9 @@ pub async fn upload(
         }
     }
 
+    let image_is_some = image.is_some();
+    let image_type_is_some = image_type.is_some();
+
     if let (Some(image), Some(image_type)) = (image, image_type) {
         let image_form = ImageForm {
             image,
@@ -134,33 +137,46 @@ pub async fn upload(
             title: title.unwrap_or_default(),
             description: description.unwrap_or_default(),
             mime: content_type.unwrap_or_default(),
+            image_name: String::default(),
         };
 
-        let image = build_image_for_foto(image_form, &user_id.username)
+        let image = build_image_for_foto(image_form, &user_id.username, &s3_client)
             .await
             .map_err(|err| UploadError::FailedToAdd(err.to_string()))?;
 
         add_image_to_db(image, &db).map_err(|err| UploadError::FailedToAdd(err.to_string()))?;
     } else {
-        return Err(UploadError::MissingFields);
+        if image_is_some {
+            return Err(UploadError::MissingFields("image_type".to_string()));
+        } else if image_type_is_some {
+            return Err(UploadError::MissingFields("image".to_string()));
+        } else {
+            return Err(UploadError::MissingFields("image, image_type".to_string()));
+        }
     }
 
     Ok(())
 }
 
 #[post("/0/upload", rank = 2, format = "multipart/form-data", data = "<data>")]
-pub fn upload_no_auth(data: Data, boundary: Boundary) -> JsonValue {
+pub fn upload_no_auth(data: Data, boundary: Boundary) -> ApiResponse {
     let _data = data;
     let _boundary = boundary;
 
-    json!({
-        "message": "please include a valid JWT token"
-    })
+    ApiResponse {
+        json: json!({
+            "message": "please include a valid JWT token"
+        }),
+        status: Status::Unauthorized,
+    }
 }
 
 #[post("/0/upload", rank = 3)]
-pub fn upload_invalid_form() -> JsonValue {
-    json!({
-        "message": "please include a valid multipart form"
-    })
+pub fn upload_invalid_form() -> ApiResponse {
+    ApiResponse {
+        json: json!({
+            "message": "please include a valid multipart form"
+        }),
+        status: Status::BadRequest,
+    }
 }

@@ -511,6 +511,7 @@ dependencies = [
  "ring",
  "rocket",
  "rocket_contrib",
+ "rusoto_core",
  "rusoto_s3",
  "serde",
  "serde_json",

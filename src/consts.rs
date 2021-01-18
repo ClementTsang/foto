@@ -2,7 +2,7 @@ use once_cell::sync::Lazy;
 
 use crate::user::UserDataBaseConfig;
 
-static CONFIG: Lazy<crate::config::Config> = Lazy::new(|| {
+pub static CONFIG: Lazy<crate::config::Config> = Lazy::new(|| {
     let config: crate::config::Config = serde_json::from_str(
         std::fs::read_to_string("./config.json")
             .expect("Could not find config.json file.")

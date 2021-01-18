@@ -17,6 +17,8 @@ mod response;
 mod user;
 
 use images::Image;
+use rusoto_core;
+use rusoto_s3::S3Client;
 use sled_extensions::{bincode::Tree, DbExt};
 use user::*;
 
@@ -33,11 +35,14 @@ fn rocket() -> rocket::Rocket {
 /// Builds a rocket given a sled_embedded database reference.  The reason this is pulled out from the main [`rocket`] function
 /// is mostly for testing purposes, as the testing client will use its own database connection across all clients.
 fn rocket_from_db(db: &sled_extensions::Db) -> rocket::Rocket {
+    let s3_client = S3Client::new(rusoto_core::Region::UsEast1);
+
     rocket::ignite()
         .mount(
             "/api/",
             routes![
                 api::search::search,
+                api::search::search_invalid_form,
                 api::upload::upload,
                 api::upload::upload_no_auth,
                 api::upload::upload_invalid_form,
@@ -51,6 +56,7 @@ fn rocket_from_db(db: &sled_extensions::Db) -> rocket::Rocket {
             image_hashes: db.open_bincode_tree("image_hashes").unwrap(),
             images: db.open_bincode_tree("images").unwrap(),
         })
+        .manage(s3_client)
 }
 
 pub struct Database {

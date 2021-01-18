@@ -33,7 +33,7 @@ const BEARER: &str = "Bearer ";
 /// Creates a JWT given a UID.
 pub fn create_jwt(username: &str) -> anyhow::Result<String> {
     let expiration_time = Utc::now()
-        .checked_add_signed(chrono::Duration::minutes(1))
+        .checked_add_signed(chrono::Duration::minutes(30))
         .ok_or(anyhow::format_err!("Could not add time to JWT timestamp."))?
         .timestamp();
 

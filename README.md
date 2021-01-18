@@ -1,6 +1,6 @@
 # foto
 
-A demo image repository as per [Shopify's backend coding challenge for Summer 2021](https://docs.google.com/document/d/1ZKRywXQLZWOqVOHC4JkF3LqdpO3Llpfk_CkZPR8bjak/edit).
+A demo image repository prototype as per [Shopify's backend coding challenge for Summer 2021](https://docs.google.com/document/d/1ZKRywXQLZWOqVOHC4JkF3LqdpO3Llpfk_CkZPR8bjak/edit).
 Mainly built using Rust, Sled, and Rocket, with many other libraries to aid in implementation.
 
 ## Features
@@ -10,7 +10,7 @@ Mainly built using Rust, Sled, and Rocket, with many other libraries to aid in i
 
 ## Installation
 
-TL;DR: Install Rust, set up AWS, clone the project, and run!
+TL;DR: Install Rust, set up S3, clone the project, and run!
 
 1. Install Rust. You can do so with [rustup](https://www.rust-lang.org/tools/install), or your system's package manager if possible. You can check if everything worked by doing
 
@@ -34,7 +34,8 @@ TL;DR: Install Rust, set up AWS, clone the project, and run!
    {
      "salt": "someBase64String",
      "jwtSecret": "someBase64String",
-     "hammingDistance": 20
+     "hammingDistance": 20,
+     "s3BucketName": "yourS3BucketHere"
    }
    ```
 
@@ -43,6 +44,7 @@ TL;DR: Install Rust, set up AWS, clone the project, and run!
    - `"salt"` is a random base64 string to use as your salt for hashing passwords. I generally used 16-byte strings for testing.
    - `"jwtSecret"` is a random base64 string to use as your JWT secret for logins. I generally used 16-byte strings for testing.
    - `"hammingDistance"` is some unsigned 64 bit number, representing how far of a Hamming distance you want to still consider as "similar". A smaller value means requiring more similarity to be returned. This is an optional value, if you don't include it, it defaults to 20.
+   - `"s3BucketName`" is your S3 bucket name. This is optional, if not included, it will simply just not upload anything.
 
 5. Run in a terminal:
 
