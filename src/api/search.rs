@@ -115,7 +115,7 @@ pub async fn search(
                         let hamming_distance: u64 = hash
                             .iter()
                             .zip(key.iter())
-                            .map(|(&hash_1, &hash_2)| (hash_1 ^ hash_2) as u64)
+                            .map(|(&hash_1, &hash_2)| (hash_1 ^ hash_2).count_ones() as u64)
                             .sum::<u64>();
 
                         println!("Hamming distance: {:?}", hamming_distance);

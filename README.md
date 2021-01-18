@@ -35,7 +35,7 @@ TL;DR: Install Rust, optionally set up S3, set up your `config.json` file, clone
    {
      "salt": "someBase64String",
      "jwtSecret": "someBase64String",
-     "hammingDistance": 20,
+     "hammingDistance": 10,
      "s3BucketName": "yourS3BucketHere"
    }
    ```
@@ -44,7 +44,7 @@ TL;DR: Install Rust, optionally set up S3, set up your `config.json` file, clone
 
    - `"salt"` is a random base64 string to use as your salt for hashing passwords. I generally used 16-byte strings for testing.
    - `"jwtSecret"` is a random base64 string to use as your JWT secret for logins. I generally used 16-byte strings for testing.
-   - `"hammingDistance"` is some unsigned 64 bit number, representing how far of a Hamming distance you want to still consider as "similar". A smaller value means requiring more similarity to be returned. This is an optional value, if you don't include it, it defaults to 20.
+   - `"hammingDistance"` is some unsigned 64 bit number, representing how far of a Hamming distance you want to still consider as "similar". A smaller value means requiring more similarity to be returned. This is an optional value, if you don't include it, it defaults to 10.
    - `"s3BucketName`" is your S3 bucket name. This is optional, if not included, it will simply just not upload anything.
 
 5. Run in a terminal:

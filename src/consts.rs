@@ -21,11 +21,11 @@ pub static USER_DATABASE_CONFIG: Lazy<UserDataBaseConfig> = Lazy::new(|| UserDat
 pub static JWT_SECRET: Lazy<Vec<u8>> =
     Lazy::new(|| base64::decode(CONFIG.jwt_secret.clone()).unwrap());
 
-/// Defaults to 20.
+/// Defaults to 10.
 pub static HAMMING_DISTANCE: Lazy<u64> = Lazy::new(|| {
     if let Some(distance) = &CONFIG.hamming_distance {
         distance.as_u64().expect("Hamming distance must be a u64.")
     } else {
-        20
+        10
     }
 });
